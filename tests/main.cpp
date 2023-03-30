@@ -113,67 +113,66 @@ FixedTree::data_t fixedDataset[NUM_TRAINING_SAMPLES][NUM_FEATURES+1];
 FixedTree::data_t scale(FixedTree::data_t a) { return a * 8; }
 
 /*
-* Determine the min and max values for each feature for a set of 
-* points.
-* minmax(min, max, NUM_TRAINED_SAMPLES, irisDataSet, NUM_FEATURES)
+* Determine the min and max values for each feature for a 
+* set of points.
+* minmax(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES)
 */
 void minmax(DATA_TYPE *min, DATA_TYPE *max, int num_points, DATA_TYPE known_points[][NUM_FEATURES+1], int num_features) {
 
-   for (int j = 0; j < num_features; j++) {
-      min[j] = MAX_FP_VAL;
-      max[j] = MIN_FP_VAL;
-      //printf("%e, %e\n", MIN_FP_VAL, MAX_FP_VAL);
-   }
+    for (int j = 0; j < num_features; j++) {
+        min[j] = MAX_FP_VAL;
+        max[j] = MIN_FP_VAL;
+        //printf("%e, %e\n", MIN_FP_VAL, MAX_FP_VAL);
+    }
 
-   for (int i = 0; i < num_points; i++) {
-      for (int j = 0; j < num_features; j++) {
-         if(known_points[i][j] < min[j])
-            min[j] = known_points[i][j];
-         if(known_points[i][j] > max[j])
-            max[j] = known_points[i][j];
-      }
-   }
+    for (int i = 0; i < num_points; i++) {
+        for (int j = 0; j < num_features; j++) {
+            if(known_points[i][j] < min[j])
+                min[j] = known_points[i][j];
+            if(known_points[i][j] > max[j])
+                max[j] = known_points[i][j];
+        }
+    }
 }
 
 /*
 * Normalize the features of each point using minmax normalization.
-minmax_normalize(min, max, NUM_TRAINED_SAMPLES, irisDataSet, NUM_FEATURES)
+* minmax_normalize(min, max, NUM_TRAINING_SAMPLES, irisDataSet, NUM_FEATURES)
 */
 void minmax_normalize(DATA_TYPE *min, DATA_TYPE *max, int num_points, DATA_TYPE points[][NUM_FEATURES+1], int num_features) {
-   for (int i = 0; i < num_points; i++) {
-      for (int j = 0; j < num_features; j++) {
-         DATA_TYPE nfeature = (DATA_TYPE) ((points[i][j] - min[j])/(max[j] - min[j]));
+    for (int i = 0; i < num_points; i++) {
+        for (int j = 0; j < num_features; j++) {
+            DATA_TYPE nfeature = (DATA_TYPE) ((points[i][j] - min[j])/(max[j] - min[j]));
 
-         // in case the normalization returns a NaN or INF
-         if(isnan(nfeature)) nfeature = (DATA_TYPE) 0.0;
-         else if(isinf(nfeature)) nfeature = (DATA_TYPE) 1.0;
+            // in case the normalization returns a NaN or INF
+            if(isnan(nfeature)) nfeature = (DATA_TYPE) 0.0;
+            else if(isinf(nfeature)) nfeature = (DATA_TYPE) 1.0;
 
-         points[i][j] = nfeature;
-      }
-      //show_point(points[i], num_features); 
-   }
+            points[i][j] = nfeature;
+        }
+        //show_point(points[i], num_features); 
+    }
 }
-
 
 int main() {
 
-   DATA_TYPE min[NUM_FEATURES];
-   DATA_TYPE max[NUM_FEATURES];
+    DATA_TYPE min[NUM_FEATURES];
+    DATA_TYPE max[NUM_FEATURES];
 
-   minmax(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
-   minmax_normalize(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
+    minmax(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
+    minmax_normalize(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
 
-   // Normalize Iris dataset values
-   // for (uint i = 0; i < 150; i++) {
-   //    for (int j = 0; j < 4; j++)
-   //       irisDataset[i][j] /= 8;
-   // }
+    // Normalize Iris dataset values
+    // for (uint i = 0; i < 150; i++) {
+    //    for (int j = 0; j < 4; j++)
+    //       irisDataset[i][j] /= 8;
+    // }
 
-   for (uint i = 0; i < 150; i++) {
-      for (uint j = 0; j <= 4; j++) {
-         fixedDataset[i][j] = irisDataset[i][j];
-      }
-   }
+    for (uint i = 0; i < 150; i++) {
+        for (uint j = 0; j <= 4; j++) {
+            fixedDataset[i][j] = irisDataset[i][j];
+        }
+    }
 
     // Run tests
     Tester ts;
