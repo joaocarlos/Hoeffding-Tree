@@ -1,0 +1,7 @@
+-Wall
+-pg
+-Wextra
+-Wno-unused-label
+-I
+/tools/Xilinx/Vitis_HLS/2020.2/include/
+-std=c++17 # only on mac
