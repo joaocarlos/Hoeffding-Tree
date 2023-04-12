@@ -72,6 +72,20 @@ class HoeffdingTree : public BinaryTree<Node_T> {
         return inference;
     }
 
+    // std::pair<class_index_t, data_t>
+    // test(data_t sample[_DataClass::N_Attributes], class_index_t classif) {
+
+    //     // node_index_t nodeIndex = this->sortSample(sample);
+    //     _NodeClass &node = this->getNode(nodeIndex);
+    //     // _DataClass &nodeData = node.getData();
+
+    //     std::pair<class_index_t, data_t> inference = node.infer();
+
+    //     // nodeData.update(sample, classif);
+
+    //     return inference;
+    // }
+
     std::pair<class_index_t, data_t> infer(data_t sample[]) {
         node_index_t nodeIndex = this->sortSample(sample);
         _NodeClass &node = this->getNode(nodeIndex);

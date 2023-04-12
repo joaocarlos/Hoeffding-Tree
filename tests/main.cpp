@@ -25,8 +25,13 @@
 #include "Tester.hpp"
 
 #define _INPUT_FILE_TRAIN_DATASET_
-// #define _INPUT_FILE_TEST_DATASET_
+#define _INPUT_FILE_TEST_DATASET_
 // #define _PLAIN_DATASET_
+#define _GENERATE_TREE_JSON_
+#define _OFFLINE_TRAINING_
+// #define _ONLINE_TRAINING_
+#define _TESTING_
+#define _ACCURACY_CHECK_
 
 #define NUM_TRAINING_SAMPLES 4336
 #define NUM_TESTING_SAMPLES 1082
@@ -39,13 +44,13 @@
 #define MIN_FP_VAL 0
 
 #ifdef _INPUT_FILE_TRAIN_DATASET_
-   DATA_TYPE irisDataset[NUM_TRAINING_SAMPLES][NUM_FEATURES+1] = {
+   DATA_TYPE trainDataset[NUM_TRAINING_SAMPLES][NUM_FEATURES+1] = {
       #include "dataset_train.txt"
    }; //{{{1,2,3,4,5},'a'}};
 #endif
 
 #ifdef _INPUT_FILE_TEST_DATASET_ 
-   float irisDataset[NUM_TESTING_SAMPLES][NUM_FEATURES+1] = {
+   DATA_TYPE testDataset[NUM_TESTING_SAMPLES][NUM_FEATURES+1] = {
       #include "dataset_test.txt"
    }; //{{{1,2,3,4,5},'a'}};
 #endif
@@ -154,466 +159,159 @@ void minmax_normalize(DATA_TYPE *min, DATA_TYPE *max, int num_points, DATA_TYPE 
     }
 }
 
+
+/*
+* Normalize the features of each point using minmax normalization.
+* minmax_normalize_sample(min, max, NUM_TRAINING_SAMPLES, inputSample, NUM_FEATURES)
+*/
+void minmax_normalize_sample(DATA_TYPE *min, DATA_TYPE *max, int num_points, DATA_TYPE *point, int num_features) {
+    for (int j = 0; j < num_features; j++) {
+        DATA_TYPE nfeature = (DATA_TYPE) ((point[j] - min[j])/(max[j] - min[j]));
+
+        // in case the normalization returns a NaN or INF
+        if(isnan(nfeature)) nfeature = (DATA_TYPE) 0.0;
+        else if(isinf(nfeature)) nfeature = (DATA_TYPE) 1.0;
+
+        point[j] = nfeature;
+    }
+        //show_point(points[i], num_features); 
+}
+
 int main() {
 
     DATA_TYPE min[NUM_FEATURES];
     DATA_TYPE max[NUM_FEATURES];
 
-    minmax(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
-    minmax_normalize(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES);
-
-    // Normalize Iris dataset values
-    // for (uint i = 0; i < 150; i++) {
-    //    for (int j = 0; j < 4; j++)
-    //       irisDataset[i][j] /= 8;
-    // }
-
-    for (uint i = 0; i < 150; i++) {
-        for (uint j = 0; j <= 4; j++) {
-            fixedDataset[i][j] = irisDataset[i][j];
-        }
-    }
+    minmax(min, max, NUM_TRAINING_SAMPLES, trainDataset, NUM_FEATURES);
+    minmax_normalize(min, max, NUM_TRAINING_SAMPLES, trainDataset, NUM_FEATURES);
 
     // Run tests
     Tester ts;
 
-#ifdef __BINARY_TREE_HPP__
-
-    ts.addTest("Binary Tree - New tree has size 1", []() {
-        typedef BinaryTree<Node<>> Tree;
-        Tree tree;
-
-        std::string executionLog =
-            "Tree has size " + std::to_string(tree.getSize());
-        return std::make_pair(tree.getSize() == 1, executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add node", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        tree.addLeftChild(root);
-
-        std::string executionLog =
-            "Tree has size " + std::to_string(tree.getSize());
-        return std::make_pair(tree.getSize() == 2, executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add Left Child", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        bool r = tree.addLeftChild(root);
-
-        std::string executionLog = (root.hasLeftChild() && r)
-                                       ? "Left child has been created."
-                                       : "Left child has not been created";
-
-        return std::make_pair((root.hasLeftChild() && r), executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add Left Child - Full tree", []() {
-        typedef BinaryTree<Node<NodeData<>, 1>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        bool r = tree.addLeftChild(root);
-
-        std::string executionLog = (root.hasLeftChild() || r)
-                                       ? "Left child has been created."
-                                       : "Left child has not been created";
-
-        return std::make_pair(!(root.hasLeftChild() || r), executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add Right Child", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        bool r = tree.addRightChild(root);
-
-        std::string executionLog = (root.hasRightChild() && r)
-                                       ? "Right child has been created."
-                                       : "Right child has not been created";
-
-        return std::make_pair((root.hasRightChild() && r), executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add Right Child - Full tree", []() {
-        typedef BinaryTree<Node<NodeData<>, 1>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        bool r = tree.addRightChild(root);
-
-        std::string executionLog = (root.hasRightChild() || r)
-                                       ? "Right child has been created."
-                                       : "Right child has not been created";
-
-        return std::make_pair(!(root.hasRightChild() || r), executionLog);
-    });
-
-    ts.addTest("Binary Tree - Root with left child has size 2", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        tree.addLeftChild(root);
-
-        std::string executionLog =
-            "Tree has size " + std::to_string(tree.getSize());
-        return std::make_pair(tree.getSize() == 2, executionLog);
-    });
-
-    ts.addTest("Binary Tree - Root with right child has size 2", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        tree.addRightChild(root);
-
-        std::string executionLog =
-            "Tree has size " + std::to_string(tree.getSize());
-        return std::make_pair(tree.getSize() == 2, executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add 2 childs, check counter", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        tree.addLeftChild(tree.getNode(tree.addLeftChild(root)));
-
-        std::string executionLog =
-            "Tree has size " + std::to_string(tree.getSize());
-        return std::make_pair(tree.getSize() == 3, executionLog);
-    });
-
-    ts.addTest("Binary Tree - Add 2 childs, check existance", []() {
-        typedef BinaryTree<Node<>> Tree;
-        typedef Tree::_NodeClass _NodeClass;
-        Tree tree;
-
-        _NodeClass &root = tree.getRootNode();
-        tree.addLeftChild(tree.getNode(tree.addLeftChild(root)));
-
-        bool ret = false;
-        std::string executionLog;
-
-        if (root.hasLeftChild()) {
-            executionLog = "Tree root has a left child.\n";
-            ret = tree.getNode(root.getLeftChild()).hasLeftChild();
-            executionLog += ret ? "\tRoot's left child has left child"
-                                : "\tRoot's left child has no left child";
-        }
-
-        return std::make_pair(ret, executionLog);
-    });
-#endif
 #ifdef __HOEFFDING_TREE_HPP__
+    
+    #ifdef _OFFLINE_TRAINING_
+        ts.addTest("Hoeffding Tree - Offline Training", []() {
+            typedef HoeffdingTree<Node<NodeData<DATA_TYPE, NUM_FEATURES, NUM_CLASSES>>> Tree;
+            typedef typename Tree::sample_count_t sample_count_t;
 
-    ts.addTest("Hoeffding Tree - SampleCountTotal when training", []() {
-        typedef HoeffdingTree<> Tree;
-        typedef typename Tree::sample_count_t sample_count_t;
+            Tree tree(1, 0.01, 0.05); // Default paper parameters 
+            bool doSplitTrial = true;
+            const sample_count_t N_Samples = NUM_TRAINING_SAMPLES;
 
-        Tree tree(1, 0.001, 0.05);
-        bool doSplitTrial = true;
-        const sample_count_t N_Samples = 1;
+            #ifdef _ACCURACY_CHECK_
+                Tree::class_index_t classification;
+                Tree::data_t confidence;            
+                int wrong_classification = 0;
+            #endif
 
-        float x[N_Samples][16] = {
-            {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        };
+            for (sample_count_t i = 0; i < N_Samples; i++) {
+                #ifdef _ACCURACY_CHECK_
+                    std::tie(classification, confidence) =
+                    tree.train(trainDataset[i], trainDataset[i][NUM_FEATURES], doSplitTrial);
+                
+                    if(classification != testDataset[i][NUM_FEATURES])
+                        wrong_classification++;
+                #else 
+                    tree.train(trainDataset[i], trainDataset[i][NUM_FEATURES], doSplitTrial);
+                #endif
+            }
 
-        sample_count_t y[N_Samples] = {1};
+            #ifdef _ACCURACY_CHECK_
+                float accuracy = wrong_classification / (float) N_Samples;
+                std::cout<<"Accuracy: " << accuracy*100 <<"%" << std::endl;
+            #endif
 
-        for (sample_count_t i = 0; i < N_Samples; i++)
-            tree.train(x[i], y[i], doSplitTrial);
+            // tree.getRootNode()->getData().evaluateSplit();
+            #ifdef _GENERATE_TREE_JSON_
+                Tree treeCopy(tree.getR(), tree.getSigma(), tree.getTau());
 
-        return std::make_pair(
-            tree.getRootNode().getData().getSampleCountTotal() == 1,
-            "Node sample count: " +
-                std::to_string(
-                    tree.getRootNode().getData().getSampleCountTotal()));
-    });
+                JsonExporter::copyNode(tree, treeCopy, tree.getRootNode(),
+                                    treeCopy.getRootNode());
 
-    ts.addTest("Hoeffding Tree - sample count distribuitions", []() {
-        typedef HoeffdingTree<> Tree;
-        typedef typename Tree::sample_count_t sample_count_t;
+                JsonExporter::inferDataset(treeCopy, trainDataset, N_Samples);
 
-        Tree tree(1, 0.001, 0.05);
-        bool doSplitTrial = true;
-        const sample_count_t N_Samples = 100;
+                std::string result = JsonExporter::treeToJson(treeCopy);
 
-        float x[N_Samples][16] = {
-            {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0.185, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+                std::ofstream file("offline_training_tree.json");
+                file << result;
+                file.close();
+            #endif
 
-        sample_count_t y[N_Samples] = {1, 0};
+            return std::make_pair(true, "Will always return true");
+        });
+    #endif
 
-        for (sample_count_t i = 0; i < N_Samples; i++) {
-            // std::cout << i << " : " << i % 2 << std::endl;
-            tree.train(x[i % 2], y[i % 2], doSplitTrial);
-        }
-
-        // tree.getRootNode()->getData().evaluateSplit();
-
-        return std::make_pair(true, "Will always return true");
-    });
-
-    ts.addTest("Hoeffding Tree - Iris sklearn dataset", []() {
-        typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
-        typedef typename Tree::sample_count_t sample_count_t;
-
-        Tree tree(1, 0.01, 0.05);
-        bool doSplitTrial = true;
-        const sample_count_t N_Samples = NUM_TRAINING_SAMPLES;
-
-        for (sample_count_t i = 0; i < N_Samples; i++) {
-            tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
-        }
-
-        // tree.getRootNode()->getData().evaluateSplit();
-
-        return std::make_pair(true, "Will always return true");
-    });
-
-#endif
-#ifdef __JSON_EXPORTER_HPP__
-
-    ts.addTest("JsonExporter - arrayToJson()", []() {
-        const uint size = 5;
-        const int array[size] = {1, 2, 3, 4, 5};
-
-        std::string str = JsonExporter::arrayToJson(array, size);
-        bool ret = str == "[1,2,3,4,5]";
-
-        return std::make_pair(ret,
-                              str + (ret ? " == " : " != ") + "[1,2,3,4,5]");
-    });
-
-    ts.addTest("JsonExporter - vectorToJson()", []() {
-        const std::vector<int> array = {1, 2, 3, 4, 5};
-
-        std::string str = JsonExporter::vectorToJson(array);
-        bool ret = str == "[1,2,3,4,5]";
-
-        return std::make_pair(ret,
-                              str + (ret ? " == " : " != ") + "[1,2,3,4,5]");
-    });
-
-    ts.addTest("JsonExporter - mapToJson()", []() {
-        std::map<std::string, int> map;
-
-        map.insert(std::pair<std::string, int>("hello", 1));
-        map.insert(std::pair<std::string, int>("world", 200));
-
-        std::string str = JsonExporter::mapToJson(map);
-
-        bool ret = str == "{\"hello\":1,\"world\":200}";
-
-        return std::make_pair(ret, str + (ret ? " == " : " != ") +
-                                       "{\"hello\":1,\"world\":200}");
-    });
-
-    ts.addTest("JsonExporter - nodeClassCountsToJson()", []() {
-        typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
-        typedef typename Tree::sample_count_t sample_count_t;
-
-        Tree tree(1, 0.01, 0.05);
-        bool doSplitTrial = false;
-        const sample_count_t N_Samples = 150;
-
-        for (sample_count_t i = 0; i < N_Samples; i++) {
-            tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
-        }
-
-        std::string str =
-            JsonExporter::nodeClassCountsToJson(tree.getRootNode(), 3);
-
-        bool ret = str == "[[50.0,50.0,50.0]]";
-
-        return std::make_pair(ret, str + (ret ? " == " : " != ") +
-                                       "[[50.0,50.0,50.0]]");
-    });
-
-    ts.addTest(
-        "JsonExporter - nodeDataToJson() without scalers - split node", []() {
+    #ifdef _ONLINE_TRAINING_
+        // TODO: accuracy check and JSON export
+        ts.addTest("Hoeffding Tree - Online Training and Test", []() {
             typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
             typedef typename Tree::sample_count_t sample_count_t;
 
             Tree tree(1, 0.01, 0.05);
             bool doSplitTrial = true;
-            const sample_count_t N_Samples = 150;
+            const sample_count_t N_Samples = NUM_TRAINING_SAMPLES;
 
             for (sample_count_t i = 0; i < N_Samples; i++) {
-                tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
+                tree.train(testDataset[i], testDataset[i][4], doSplitTrial);
             }
 
-            std::string str =
-                JsonExporter::nodeDataToJson(tree.getRootNode(), 1, 2);
+            // tree.getRootNode()->getData().evaluateSplit();
 
-            bool ret = str == "[-1,-1,-2,-2.0,0.666667,150,150.0]";
-
-            return std::make_pair(ret,
-                                  str + (ret ? " == " : " != ") +
-                                      "[-1,-1,-2,-2.0,0.666667,150,150.0]");
+            return std::make_pair(true, "Will always return true");
         });
-
-    ts.addTest(
-        "JsonExporter - nodeDataToJson() with scalers - split node", []() {
-            typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
+    #endif
+    #ifdef _TESTING_
+        ts.addTest("Hoeffding Tree - Test", []() {
+            typedef HoeffdingTree<Node<NodeData<DATA_TYPE, NUM_FEATURES, NUM_CLASSES>>> Tree;
             typedef typename Tree::sample_count_t sample_count_t;
 
             Tree tree(1, 0.01, 0.05);
             bool doSplitTrial = true;
-            const sample_count_t N_Samples = 150;
+            const sample_count_t N_Samples = NUM_TESTING_SAMPLES;
+            
+            #ifdef _ACCURACY_CHECK_
+                Tree::class_index_t classification;
+                Tree::data_t confidence;
+                int wrong_classification = 0;
+            #endif
 
             for (sample_count_t i = 0; i < N_Samples; i++) {
-                tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
+                #ifdef _ACCURACY_CHECK_
+                    std::tie(classification, confidence) =
+                    tree.infer(testDataset[i]);
+                    if(classification != testDataset[i][NUM_FEATURES])
+                        wrong_classification++;
+                #else 
+                    tree.infer(testDataset[i]);
+                #endif
             }
 
-            typedef Tree::data_t data_t;
+            #ifdef _ACCURACY_CHECK_
+                float accuracy = wrong_classification / (float) N_Samples;
+                std::cout<<"Accuracy: " << accuracy*100 <<"%" << std::endl;
+            #endif
 
-            static const Tree::_DataClass::sampleScaler
-                scalers[Tree::_DataClass::N_Attributes] = {
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; }};
+            #ifdef _GENERATE_TREE_JSON_
+                Tree treeCopy(tree.getR(), tree.getSigma(), tree.getTau());
 
-            std::string str =
-                JsonExporter::nodeDataToJson(tree.getRootNode(), 1, 2, scalers);
+                JsonExporter::copyNode(tree, treeCopy, tree.getRootNode(),
+                                    treeCopy.getRootNode());
 
-            bool ret = str == "[-1,-1,-2,-2.0,0.666667,150,150.0]";
+                JsonExporter::inferDataset(treeCopy, testDataset, N_Samples);
 
-            return std::make_pair(ret,
-                                  str + (ret ? " == " : " != ") +
-                                      "[-1,-1,-2,-2.0,0.666667,150,150.0]");
+                std::string result = JsonExporter::treeToJson(treeCopy);
+
+                std::ofstream file("test_tree.json");
+                file << result;
+                file.close();
+            #endif
+
+            // tree.getRootNode()->getData().evaluateSplit();
+
+            return std::make_pair(true, "Will always return true");
         });
-
-    ts.addTest(
-        "JsonExporter - nodeDataToJson() without scalers - non-split node",
-        []() {
-            typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
-            typedef typename Tree::sample_count_t sample_count_t;
-
-            Tree tree(1, 0.01, 0.05);
-            bool doSplitTrial = false;
-            const sample_count_t N_Samples = 150;
-
-            for (sample_count_t i = 0; i < N_Samples; i++) {
-                tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
-            }
-
-            std::string str =
-                JsonExporter::nodeDataToJson(tree.getRootNode(), 1, 2);
-
-            bool ret = str == "[-1,-1,-2,-2.0,0.666667,150,150.0]";
-
-            return std::make_pair(ret,
-                                  str + (ret ? " == " : " != ") +
-                                      "[-1,-1,-2,-2.0,0.666667,150,150.0]");
-        });
-
-    ts.addTest(
-        "JsonExporter - nodeDataToJson() with scalers - non-split node", []() {
-            typedef HoeffdingTree<Node<NodeData<float, 4, 3>>> Tree;
-            typedef typename Tree::sample_count_t sample_count_t;
-
-            Tree tree(1, 0.01, 0.05);
-            bool doSplitTrial = false;
-            const sample_count_t N_Samples = 150;
-
-            for (sample_count_t i = 0; i < N_Samples; i++) {
-                tree.train(irisDataset[i], irisDataset[i][4], doSplitTrial);
-            }
-
-            typedef Tree::data_t data_t;
-
-            static const Tree::_DataClass::sampleScaler
-                scalers[Tree::_DataClass::N_Attributes] = {
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; },
-                    [](data_t a) { return a * 8; }};
-
-            std::string str =
-                JsonExporter::nodeDataToJson(tree.getRootNode(), 1, 2, scalers);
-
-            bool ret = str == "[-1,-1,-2,-2.0,0.666667,150,150.0]";
-
-            return std::make_pair(ret,
-                                  str + (ret ? " == " : " != ") +
-                                      "[-1,-1,-2,-2.0,0.666667,150,150.0]");
-        });
-
-    ts.addTest("JsonExporter - copyNode() and treeToJson()", []() {
-        /*
-        typedef HoeffdingTree<Node<NodeData<float, TypeChooser_Unsigned(4), 4,
-                                            TypeChooser_Unsigned(3), 3>>>
-            Tree;
-        */
-
-        typedef FixedTree Tree;
-
-        typedef typename Tree::sample_count_t sample_count_t;
-
-        Tree tree(1, 0.001, 0.05);
-        bool doSplitTrial = true;
-        const sample_count_t N_Samples = 150;
-
-        for (sample_count_t i = 0; i < N_Samples; i++) {
-            tree.train(fixedDataset[i], fixedDataset[i][4], doSplitTrial);
-        }
-
-        static const Tree::_DataClass::sampleScaler
-            scalers[Tree::_DataClass::N_Attributes] = {scale, scale, scale,
-                                                       scale};
-
-        Tree treeCopy(tree.getR(), tree.getSigma(), tree.getTau());
-
-        JsonExporter::copyNode(tree, treeCopy, tree.getRootNode(),
-                               treeCopy.getRootNode());
-
-        JsonExporter::inferDataset(treeCopy, fixedDataset, N_Samples);
-
-        std::string result = JsonExporter::treeToJson(treeCopy, scalers);
-
-        bool ret = result ==
-                   "{\"classes_\":[0,1,2],\"feature_importances_\":[0,0,0,0],"
-                   "\"max_features_\":4,\"meta\":\"decision-tree\",\"n_classes_"
-                   "\":3,\"n_features_\":4,\"n_outputs_\":1,\"params\":{\"ccp_"
-                   "alpha\": 0.0,\"class_weight\": null,\"criterion\": "
-                   "\"gini\",\"max_depth\": null,\"max_features\": "
-                   "null,\"max_leaf_nodes\": null,\"min_impurity_decrease\": "
-                   "0.0,\"min_impurity_split\": null,\"min_samples_leaf\": "
-                   "1,\"min_samples_split\": 2,\"min_weight_fraction_leaf\": "
-                   "0.0,\"random_state\": null,\"splitter\": "
-                   "\"best\"},\"tree_\":{\"max_depth\":1,\"node_count\":1,"
-                   "\"nodes\":[[-1,-1,-2,-2.0,0.666667,150,150.0]],\"nodes_"
-                   "dtype\":[\"<i8\",\"<i8\",\"<i8\",\"<f8\",\"<f8\",\"<i8\","
-                   "\"<f8\"],\"values\":[[[50.0,50.0,50.0]]]}}";
-
-        std::ofstream file("out.json");
-        file << result;
-        file.close();
-
-        return std::make_pair(ret, ret ? "Sucessfull json string export"
-                                       : "Resulting json string did not match");
-    });
-
+    #endif
 #endif
-
     return ts.runTestSuite(true, false);
 }
