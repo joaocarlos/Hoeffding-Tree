@@ -14,11 +14,12 @@ DEPS := $(OBJS:.o=.d)
 
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-PROF_FLAGS := -pg 
-# OPT_FLAGS := -O3
-# EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++
+# PROF_FLAGS := -pg 
+OPT_FLAGS := -O3
+EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++ (-g)
+SCENARIO_FLAG := -DSCENARIO=1
 
-CPPFLAGS ?= $(INC_FLAGS) -MMD -MP -g $(PROF_FLAGS) -fPIE -Wno-unused-label 
+CPPFLAGS ?= $(INC_FLAGS) -MMD -MP $(PROF_FLAGS) $(EXTRA_FLAGS) $(OPT_FLAGS) $(SCENARIO_FLAG) -fPIE -Wno-unused-label 
 
 # -I/tools/Xilinx/Vitis_HLS/2020.2/include 
 

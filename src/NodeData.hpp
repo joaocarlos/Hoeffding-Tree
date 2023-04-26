@@ -207,7 +207,8 @@ class NodeData {
             } else {
                 p = _prob(dist, distSum, X, j);
             }
-            ret -= tcm::pow(p, 2);
+            // TODO: change to p * p
+            ret -= tcm::pow(p, 2); // p * p;
         }
         return ret;
     }
