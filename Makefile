@@ -14,10 +14,13 @@ DEPS := $(OBJS:.o=.d)
 
 INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-EXTRA_FLAGS := -pg 
+PROF_FLAGS := -pg 
+# OPT_FLAGS := -O3
 # EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++
 
-CPPFLAGS ?= $(INC_FLAGS) -MMD -MP -g $(EXTRA_FLAGS) -fPIE -Wno-unused-label -I/tools/Xilinx/Vitis_HLS/2020.2/include 
+CPPFLAGS ?= $(INC_FLAGS) -MMD -MP -g $(PROF_FLAGS) -fPIE -Wno-unused-label 
+
+# -I/tools/Xilinx/Vitis_HLS/2020.2/include 
 
 LDFLAGS := 
 
@@ -42,6 +45,8 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 
 .PHONY: clean
 .PHONY: run
+.PHONY: gprof
+.PHONY: graph
 
 clean:
 	$(RM) -r $(BUILD_DIR)
@@ -49,6 +54,11 @@ clean:
 run:
 	./$(TARGET_EXEC)
 
+gprof:
+	gprof $(TARGET_EXEC) gmon.out > gprof.txt | gprof2dot gprof.txt > gprof.dot
+
+graph:
+	dot -Tpng gprof.dot -o gprof.png
 
 -include $(DEPS)
 
