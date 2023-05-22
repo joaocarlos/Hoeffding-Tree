@@ -55,3 +55,11 @@
 #ifndef _UPDATE_QUANTILES_OPT_
 #define _UPDATE_QUANTILES_OPT_ 2
 #endif
+
+#ifndef _SGN_ALPHA_OPT_
+#define _SGN_ALPHA_OPT_ 1
+#endif
+
+#ifndef _POW_OPT_
+#define _POW_OPT_ 0
+#endif

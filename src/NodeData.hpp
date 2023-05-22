@@ -204,7 +204,11 @@ class NodeData {
      * @return datatype
      */
     data_t _sgnAlpha(data_t z, data_t alpha) {
+#if _SGN_ALPHA_OPT_ == 0
         return z < 0 ? (-alpha) : ((data_t)1 - alpha);
+#else
+        return ((data_t)1 - alpha);
+#endif
     }
 
     data_t _getAlphaFromQuantileIndex(quantile_index_t quantileIndex) {
@@ -212,6 +216,7 @@ class NodeData {
     }
 
     void _updateAttributeRange(attribute_index_t attributeIndex, data_t value) {
+        // printf("Sample count %d\n", _sampleCountTotal);
         if (_sampleCountTotal) {
             if (value < _attributeRanges[attributeIndex][AttributeRange::Min]) {
                 _attributeRanges[attributeIndex][AttributeRange::Min] = value;
@@ -330,8 +335,11 @@ class NodeData {
             } else {
                 p = _prob(dist, distSum, X, j);
             }
-            // TODO: change to p * p
-            ret -= p * p; // tcm::pow(p, 2); // p * p;
+#if _POW_OPT_ == 0
+            ret -= tcm::pow(p, 2);
+#else
+            ret -= p * p;
+#endif
         }
         return ret;
     }

@@ -76,8 +76,8 @@ typedef char CLASS_ID_TYPE;
 typedef float DATA_TYPE;
 // typedef _Float16 DATA_TYPE;
 
-#define MAX_FP_VAL 0
-#define MIN_FP_VAL 0
+#define MAX_FP_VAL FLT_MAX
+#define MIN_FP_VAL FLT_MIN
 
 #ifdef _INPUT_FILE_TRAIN_DATASET_
 DATA_TYPE trainDataset[NUM_TRAINING_SAMPLES][NUM_FEATURES + 1] = {
@@ -347,10 +347,10 @@ void minmax_normalize(DATA_TYPE *min, DATA_TYPE *max, int num_points,
                 (DATA_TYPE)((points[i][j] - min[j]) / (max[j] - min[j]));
 
             // in case the normalization returns a NaN or INF
-            if (isnan(nfeature))
-                nfeature = (DATA_TYPE)0.0;
-            else if (isinf(nfeature))
-                nfeature = (DATA_TYPE)1.0;
+            // if (isnan(nfeature))
+            //     nfeature = (DATA_TYPE)0.0;
+            // else if (isinf(nfeature))
+            //     nfeature = (DATA_TYPE)1.0;
 
             points[i][j] = nfeature;
         }
@@ -455,10 +455,10 @@ void minmax_normalize_sample(DATA_TYPE *min, DATA_TYPE *max, DATA_TYPE *point,
             (DATA_TYPE)((point[j] - min[j]) / (max[j] - min[j]));
 
         // in case the normalization returns a NaN or INF
-        if (isnan(nfeature))
-            nfeature = (DATA_TYPE)0.0;
-        else if (isinf(nfeature))
-            nfeature = (DATA_TYPE)1.0;
+        // if (isnan(nfeature))
+        //     nfeature = (DATA_TYPE)0.0;
+        // else if (isinf(nfeature))
+        //     nfeature = (DATA_TYPE)1.0;
 
         point[j] = nfeature;
     }
@@ -468,8 +468,9 @@ void minmax_normalize_sample(DATA_TYPE *min, DATA_TYPE *max, DATA_TYPE *point,
 DATA_TYPE min[NUM_FEATURES];
 DATA_TYPE max[NUM_FEATURES];
 
-int main() {
+#define ITERATIONS 200
 
+int main() {
     minmax(min, max, NUM_TRAINING_SAMPLES, trainDataset, NUM_FEATURES);
 #if SCENARIO == 1 || SCENARIO == 2
     minmax_normalize(min, max, NUM_TRAINING_SAMPLES, trainDataset,
@@ -593,76 +594,82 @@ int main() {
 
 #ifdef _ALL_ONLINE_TRAINING_AND_TESTING_
     ts.addTest("Hoeffding Tree - All Online Training and Test", []() {
-        typedef HoeffdingTree<
-            Node<NodeData<DATA_TYPE, NUM_FEATURES, NUM_CLASSES>>>
-            Tree;
-        typedef typename Tree::sample_count_t sample_count_t;
+        for (int z = 0; z < ITERATIONS; z++) {
 
-        Tree tree(1, 0.01, 0.05);
-        bool doSplitTrial = true;
-        sample_count_t N_Samples = NUM_TRAINING_SAMPLES;
+            typedef HoeffdingTree<
+                Node<NodeData<DATA_TYPE, NUM_FEATURES, NUM_CLASSES>>>
+                Tree;
+            typedef typename Tree::sample_count_t sample_count_t;
+
+            Tree tree(1, 0.01, 0.05);
+            bool doSplitTrial = true;
+            sample_count_t N_Samples = NUM_TRAINING_SAMPLES;
 
 #ifdef _ACCURACY_CHECK_
-        Tree::class_index_t classification;
-        Tree::data_t confidence;
-        int wrong_classification = 0;
+            Tree::class_index_t classification;
+            Tree::data_t confidence;
+            int wrong_classification = 0;
 #endif
 
-        for (sample_count_t i = 0; i < N_Samples; i++) {
-            minmax_normalize_sample(min, max, trainDataset[i], NUM_FEATURES);
+            for (sample_count_t i = 0; i < N_Samples; i++) {
+                minmax_normalize_sample(min, max, trainDataset[i],
+                                        NUM_FEATURES);
 #ifdef _ACCURACY_CHECK_
-            std::tie(classification, confidence) = tree.infer(trainDataset[i]);
-            if (classification != trainDataset[i][NUM_FEATURES])
-                wrong_classification++;
+                std::tie(classification, confidence) =
+                    tree.infer(trainDataset[i]);
+                if (classification != trainDataset[i][NUM_FEATURES])
+                    wrong_classification++;
 
 #else
             tree.infer(trainDataset[i]);
 
 #endif
-            tree.train(trainDataset[i], trainDataset[i][NUM_FEATURES],
-                       doSplitTrial);
-        }
+                tree.train(trainDataset[i], trainDataset[i][NUM_FEATURES],
+                           doSplitTrial);
+            }
 
-        const int N_Samples_Testing = NUM_TESTING_SAMPLES;
+            const int N_Samples_Testing = NUM_TESTING_SAMPLES;
 
-        for (sample_count_t i = 0; i < N_Samples_Testing; i++) {
-            minmax_normalize_sample(min, max, testDataset[i], NUM_FEATURES);
+            for (sample_count_t i = 0; i < N_Samples_Testing; i++) {
+                minmax_normalize_sample(min, max, testDataset[i], NUM_FEATURES);
 #ifdef _ACCURACY_CHECK_
-            std::tie(classification, confidence) = tree.infer(testDataset[i]);
-            if (classification != testDataset[i][NUM_FEATURES])
-                wrong_classification++;
+                std::tie(classification, confidence) =
+                    tree.infer(testDataset[i]);
+                if (classification != testDataset[i][NUM_FEATURES])
+                    wrong_classification++;
 
 #else
             tree.infer(testDataset[i]);
 
 #endif
-            tree.train(testDataset[i], testDataset[i][NUM_FEATURES],
-                       doSplitTrial);
-        }
+                tree.train(testDataset[i], testDataset[i][NUM_FEATURES],
+                           doSplitTrial);
+            }
 
 #ifdef _ACCURACY_CHECK_
-        float accuracy =
-            wrong_classification / (float)(N_Samples + N_Samples_Testing);
-        std::cout << "Accuracy: " << accuracy * 100 << "%" << std::endl;
+            float accuracy =
+                wrong_classification / (float)(N_Samples + N_Samples_Testing);
+            std::cout << "Accuracy: " << accuracy * 100 << "%" << std::endl;
 #endif
 
-        // tree.getRootNode()->getData().evaluateSplit();
+            // tree.getRootNode()->getData().evaluateSplit();
 
 #ifdef _GENERATE_TREE_JSON_
-        Tree treeCopy(tree.getR(), tree.getSigma(), tree.getTau());
+            Tree treeCopy(tree.getR(), tree.getSigma(), tree.getTau());
 
-        JsonExporter::copyNode(tree, treeCopy, tree.getRootNode(),
-                               treeCopy.getRootNode());
+            JsonExporter::copyNode(tree, treeCopy, tree.getRootNode(),
+                                   treeCopy.getRootNode());
 
-        JsonExporter::inferDataset(treeCopy, testDataset, N_Samples);
+            JsonExporter::inferDataset(treeCopy, testDataset, N_Samples);
 
-        std::string result = JsonExporter::treeToJson(treeCopy);
+            std::string result = JsonExporter::treeToJson(treeCopy);
 
-        std::ofstream file("all_online_training_and_testing_scenario_" +
-                           SCENARIO + ".json");
-        file << result;
-        file.close();
+            std::ofstream file("all_online_training_and_testing_scenario_" +
+                               SCENARIO + ".json");
+            file << result;
+            file.close();
 #endif
+        }
         return std::make_pair(true, "Will always return true");
     });
 #endif
