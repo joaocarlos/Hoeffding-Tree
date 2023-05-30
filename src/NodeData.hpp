@@ -40,7 +40,6 @@ class NodeData {
         return _sampleCountPerClass[classif];
     }
 
-#if _UPDATE_OPT_ == 0
     void update(data_t sample[N_Attributes], class_index_t classif) {
 
     NodeData_update__attributes:
@@ -58,34 +57,6 @@ class NodeData {
             _mostCommonClass = classif;
         }
     }
-#elif _UPDATE_OPT_ == 1
-    void update(data_t sample[N_Attributes], class_index_t classif) {
-
-        // Unroll the loop by a factor of 4
-        // I also try to align the loop to a 64 byte boundary
-        for (attribute_index_t i = 0; i < N_Attributes; i += 4) {
-            _updateAttributeRange(i, sample[i]);
-            _updateQuantiles(i, classif, sample[i]);
-
-            _updateAttributeRange(i + 1, sample[i + 1]);
-            _updateQuantiles(i + 1, classif, sample[i + 1]);
-
-            _updateAttributeRange(i + 2, sample[i + 2]);
-            _updateQuantiles(i + 2, classif, sample[i + 2]);
-
-            _updateAttributeRange(i + 3, sample[i + 3]);
-            _updateQuantiles(i + 3, classif, sample[i + 3]);
-        }
-
-        _sampleCountTotal++;
-        _sampleCountPerClass[classif]++;
-
-        if (_sampleCountPerClass[classif] >
-            _sampleCountPerClass[_mostCommonClass]) {
-            _mostCommonClass = classif;
-        }
-    }
-#endif
 
     class_index_t getMostCommonClass() { return _mostCommonClass; }
 
@@ -96,7 +67,6 @@ class NodeData {
 
     data_t getImpurity() { return _gini(NULL, NULL, None); }
 
-#if _EVALUALTE_SPLIT_OPT_ == 0
     std::tuple<bool, attribute_index_t, data_t, data_t> evaluateSplit() {
         TopSplitBuffer<2, data_t, attribute_index_t> topSplitCandidates;
 
@@ -132,61 +102,6 @@ class NodeData {
 
         return top;
     }
-#elif _EVALUALTE_SPLIT_OPT_ == 1
-    std::tuple<bool, attribute_index_t, data_t, data_t> evaluateSplit() {
-        TopSplitBuffer<2, data_t, attribute_index_t> topSplitCandidates;
-
-    NodeData_evaluateSplit__attributes:
-        for (attribute_index_t i = 0; i < N_Attributes; i += 2) {
-        NodeData_evaluateSplit__attributes__pt:
-            for (point_index_t p = 0; p < N_pt; p++) {
-                sample_count_t dist[N_Classes][2], distSum[2] = {0};
-
-                data_t pt0 = _getSplitPointValue(i, p);
-                data_t pt1 = _getSplitPointValue(i + 1, p);
-            NodeData_evaluateSplit__attributes__pt__classes:
-                for (class_index_t j = 0; j < N_Classes; j++) {
-                    sample_count_t distL0, distR0, distL1, distR1;
-                    std::tie(distL0, distR0) =
-                        _getSampleCountDistribuition(i, j, pt0);
-                    std::tie(distL1, distR1) =
-                        _getSampleCountDistribuition(i + 1, j, pt1);
-
-                    dist[j][Left] = distL0 + distL1;
-                    dist[j][Right] = distR0 + distR1;
-
-                    distSum[Left] += distL0 + distL1;
-                }
-                distSum[Right] = getSampleCountTotal() - distSum[Left];
-
-                data_t G_pt0 = _G(dist, distSum);
-
-                sample_count_t distL1, distR1;
-                std::tie(distL1, distR1) =
-                    _getSampleCountDistribuition(i + 1, 0, pt1);
-
-                data_t G_pt1 = 0;
-                if (distL1 > 0 || distR1 > 0) {
-                    dist[0][Left] = distL1;
-                    dist[0][Right] = distR1;
-                    dist[1][Left] = distSum[Left] - distL1;
-                    dist[1][Right] = distSum[Right] - distR1;
-                    G_pt1 = _G(dist, distSum);
-                }
-
-                topSplitCandidates.add(i, pt0, G_pt0);
-                topSplitCandidates.add(i + 1, pt1, G_pt1);
-            }
-        }
-
-        std::tuple<bool, attribute_index_t, data_t, data_t> top =
-            topSplitCandidates.getCandidate(0);
-        std::get<3>(top) -= topSplitCandidates.getG(1);
-
-        return top;
-    }
-
-#endif
 
   protected:
     class_index_t _mostCommonClass = 0;
@@ -231,7 +146,6 @@ class NodeData {
         }
     }
 
-#if _UPDATE_QUANTILES_OPT_ == 0
     void _updateQuantiles(attribute_index_t attributeIndex,
                           class_index_t classif, data_t value) {
     NodeData_updateQuantiles__quantiles:
@@ -242,43 +156,7 @@ class NodeData {
                           _getAlphaFromQuantileIndex(k));
         }
     }
-#elif _UPDATE_QUANTILES_OPT_ == 1
-    void _updateQuantiles(attribute_index_t attributeIndex,
-                          class_index_t classif, data_t value) {
-        data_t alpha[N_Quantiles];
-        for (quantile_index_t k = 0; k < N_Quantiles; k++) {
-            alpha[k] = _getAlphaFromQuantileIndex(k);
-        }
 
-        for (quantile_index_t k = 0; k < N_Quantiles; k++) {
-            data_t diff = _Attributes[attributeIndex][classif][k] - value;
-            data_t sgnAlpha = _sgnAlpha(diff, alpha[k]);
-            _Attributes[attributeIndex][classif][k] -= _lambda * sgnAlpha;
-        }
-    }
-#elif _UPDATE_QUANTILES_OPT_ == 2
-    void _updateQuantiles(attribute_index_t attributeIndex,
-                          class_index_t classif, data_t value) {
-        data_t alpha[N_Quantiles];
-        for (quantile_index_t k = 0; k < N_Quantiles; k++) {
-            alpha[k] = _getAlphaFromQuantileIndex(k);
-        }
-
-        data_t diff[2] = {0, 0};
-        data_t sgnAlpha[2] = {0, 0};
-        for (quantile_index_t k = 0; k < N_Quantiles; k += 2) {
-            diff[0] = _Attributes[attributeIndex][classif][k] - value;
-            sgnAlpha[0] = _sgnAlpha(diff[1], alpha[k]);
-            _Attributes[attributeIndex][classif][k] -= _lambda * sgnAlpha[1];
-
-            diff[1] = _Attributes[attributeIndex][classif][k + 1] - value;
-            sgnAlpha[1] = _sgnAlpha(diff[0], alpha[k + 1]);
-            _Attributes[attributeIndex][classif][k + 1] -=
-                _lambda * sgnAlpha[0];
-        }
-    }
-
-#endif
     data_t _getSplitPointValue(attribute_index_t attributeIndex,
                                point_index_t p) {
         return ((_attributeRanges[attributeIndex][AttributeRange::Max] -
