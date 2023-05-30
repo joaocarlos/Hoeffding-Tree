@@ -58,7 +58,6 @@
 
 typedef char CLASS_ID_TYPE;
 typedef float DATA_TYPE;
-// typedef _Float16 DATA_TYPE;
 
 #define MAX_FP_VAL FLT_MAX
 #define MIN_FP_VAL FLT_MIN

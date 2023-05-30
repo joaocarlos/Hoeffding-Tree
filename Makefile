@@ -7,7 +7,8 @@ BUILD_DIR ?= .build
 SRC_DIRS ?= src tests
 GPROF_DIR ?= gprof
 TARGET_EXEC ?= $(BUILD_DIR)/$(TARGET_EXEC_NAME)
-UNAME_S := $(shell uname -s) # get OS name
+# Get the OS name
+UNAME_S := $(shell uname -s)
 
 SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name "*.cpp" -or -name "*.c" ! -name "test.c" -or -name "*.s")
 SRCS := $(filter-out tests/main.cpp, $(SRCS)) # removing the old main
@@ -23,10 +24,12 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 # -fno-inline: do not inline functions
 # -fno-inline-small-functions: do not inline functions that are both small and marked inline
 # -fno-default-inline: do not make any functions inline by default
-# PROF_FLAGS := -pg -fprofile-arcs -ftest-coverage -fno-inline -fno-inline-small-functions -fno-default-inline 
-C_XX_OPT_FLAGS := -O3
+ifeq ($(UNAME_S),Linux) 
+	PROF_FLAGS := -pg -fprofile-arcs -ftest-coverage -fno-inline -fno-inline-small-functions -fno-default-inline -fno-omit-frame-pointer
+endif
+C_XX_OPT_FLAGS := -O3 -ftree-vectorize -fopt-info-vec
 EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++
-SCENARIO := 1 # default is 1
+SCENARIO := 1
 SCENARIO_FLAG := -DSCENARIO=$(SCENARIO)
 SGN_ALPHA_OPT := 0
 POW_OPT := 0
@@ -39,7 +42,7 @@ CPPFLAGS ?= $(INC_FLAGS) -MMD -MP $(PROF_FLAGS) $(EXTRA_FLAGS) $(C_XX_OPT_FLAGS)
 
 LDFLAGS := 
 
-ifeq ($(UNAME_S),Darwin) 
+ifeq ($(UNAME_S),Linux) 
 all: clean $(TARGET_EXEC)_$(SCENARIO) run gprof graph
 else 
 all: clean $(TARGET_EXEC)_$(SCENARIO) run
@@ -69,12 +72,13 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 .PHONY: graph
 
 clean:
+	echo $(PROF_FLAGS)
 	$(RM) -r $(BUILD_DIR)
 
 run:
 	./$(TARGET_EXEC)_$(SCENARIO)
 
-gprof: run
+gprof: ./$(TARGET_EXEC)_$(SCENARIO)
 	gprof $(TARGET_EXEC)_$(SCENARIO) gmon.out > $(GPROF_DIR)/gprof_$(SCENARIO).txt | gprof2dot $(GPROF_DIR)/gprof_$(SCENARIO).txt > $(GPROF_DIR)/gprof_$(SCENARIO).dot
 
 graph: 
