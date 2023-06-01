@@ -12,6 +12,7 @@ UNAME_S := $(shell uname -s)
 
 SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name "*.cpp" -or -name "*.c" ! -name "test.c" -or -name "*.s")
 SRCS := $(filter-out tests/main.cpp, $(SRCS)) # removing the old main
+SRCS := $(filter-out tests/Tester.cpp, $(SRCS)) # removing the old main
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
@@ -22,33 +23,44 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 # -fprile-arcs: generate extra code to write profile information suitable for the analysis program gprof
 # -ftest-coverage: compile with coverage information for each object file
 # -fno-inline: do not inline functions
-# -fno-inline-small-functions: do not inline functions that are both small and marked inline
-# -fno-default-inline: do not make any functions inline by default
+# -fno-inline-small-functions: do not inline functions that are both small and marked inline (removed)
+# -fno-default-inline: do not make any functions inline by default (removed)
+# -fno-omit-frame-pointer: do not omit frame pointers for leaf functions (functions that do not call other functions)
+# -fopt-info-vec: print information about vectorization 
 ifeq ($(UNAME_S),Linux) 
-	PROF_FLAGS := -pg -fprofile-arcs -ftest-coverage -fno-inline -fno-inline-small-functions -fno-default-inline -fno-omit-frame-pointer
+	PROF_FLAGS := -pg 
+	PROF_FLAGS := $(PROF_FLAGS) -fprofile-arcs -ftest-coverage -fno-inline -fno-omit-frame-pointer
+	PROF_FLAGS := $(PROF_FLAGS) -fopt-info-vec
 endif
-C_XX_OPT_FLAGS := -O3 -ftree-vectorize -fopt-info-vec
+C_XX_OPT_FLAGS := -O3 -march=native # -ftree-vectorize
 EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++
 SCENARIO := 1
-SCENARIO_FLAG := -DSCENARIO=$(SCENARIO)
+SCENARIO_FLAG := DSCENARIO=$(SCENARIO)
 SGN_ALPHA_OPT := 0
+SGN_ALPHA_OPT_FLAG := D_SGN_ALPHA_OPT_=$(SGN_ALPHA_OPT)
 POW_OPT := 0
+POW_OPT_FLAG := D_POW_OPT_=$(POW_OPT)
 ISNAN_ISINF := 1
-CODE_OPT_FLAGS := -D_POW_OPT_=$(POW_OPT) -D_SGN_ALPHA_OPT_=$(SGN_ALPHA_OPT) -D_ISNAN_ISINF_=$(ISNAN_ISINF)
+ISNAN_ISINF_FLAG :=D_ISNAN_ISINF_=$(ISNAN_ISINF)
 
-CPPFLAGS ?= $(INC_FLAGS) -MMD -MP $(PROF_FLAGS) $(EXTRA_FLAGS) $(C_XX_OPT_FLAGS) $(SCENARIO_FLAG) $(CODE_OPT_FLAGS) -fPIE -Wno-unused-label 
+CODE_OPT_FLAGS := -$(POW_OPT_FLAG) -$(SGN_ALPHA_OPT_FLAG) -$(ISNAN_ISINF_FLAG)
+
+CPPFLAGS ?= $(INC_FLAGS) -MMD -MP $(PROF_FLAGS) $(EXTRA_FLAGS) $(C_XX_OPT_FLAGS) -$(SCENARIO_FLAG) $(CODE_OPT_FLAGS) -fPIE -Wno-unused-label 
 
 # -I/tools/Xilinx/Vitis_HLS/2020.2/include 
+
+TARGET_EXTENSION_NAME := $(SCENARIO_FLAG)_$(SGN_ALPHA_OPT_FLAG)_$(POW_OPT_FLAG)_$(ISNAN_ISINF_FLAG)
+TARGET_NAME := $(TARGET_EXEC)_$(TARGET_EXTENSION_NAME)
 
 LDFLAGS := 
 
 ifeq ($(UNAME_S),Linux) 
-all: clean $(TARGET_EXEC)_$(SCENARIO) run gprof graph
+all: clean $(TARGET_NAME) run gprof graph
 else 
-all: clean $(TARGET_EXEC)_$(SCENARIO) run
+all: clean $(TARGET_NAME) run
 endif
 
-$(TARGET_EXEC)_$(SCENARIO): $(OBJS)
+$(TARGET_NAME): $(OBJS)
 	$(CC) $(OBJS) $(PROF_FLAGS) -o $@ $(LDFLAGS)
 
 # assembly
@@ -70,19 +82,27 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 .PHONY: run
 .PHONY: gprof
 .PHONY: graph
+.PHONY: clean-gprof
+.PHONY: advisor
 
 clean:
-	echo $(PROF_FLAGS)
 	$(RM) -r $(BUILD_DIR)
 
 run:
-	./$(TARGET_EXEC)_$(SCENARIO)
+	./$(TARGET_NAME)
 
-gprof: ./$(TARGET_EXEC)_$(SCENARIO)
-	gprof $(TARGET_EXEC)_$(SCENARIO) gmon.out > $(GPROF_DIR)/gprof_$(SCENARIO).txt | gprof2dot $(GPROF_DIR)/gprof_$(SCENARIO).txt > $(GPROF_DIR)/gprof_$(SCENARIO).dot
+gprof: $(TARGET_NAME)
+	gprof $(TARGET_NAME) gmon.out > $(GPROF_DIR)/gprof_$(TARGET_EXTENSION_NAME).txt | gprof2dot $(GPROF_DIR)/gprof_$(TARGET_EXTENSION_NAME).txt > $(GPROF_DIR)/gprof_$(TARGET_EXTENSION_NAME).dot
 
 graph: 
-	dot -Tpng $(GPROF_DIR)/gprof_$(SCENARIO).dot -o $(GPROF_DIR)/gprof_$(SCENARIO).png
+	dot -Tpng $(GPROF_DIR)/gprof_$(TARGET_EXTENSION_NAME).dot -o $(GPROF_DIR)/gprof_$(TARGET_EXTENSION_NAME).png
+
+clean-gprof: 
+	$(RM) -r $(GPROF_DIR)/*
+
+advisor:
+	# TODO
+	@echo "To be defined"
 
 -include $(DEPS)
 

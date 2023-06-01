@@ -79,8 +79,9 @@ DATA_TYPE testDataset[NUM_TESTING_SAMPLES][NUM_FEATURES + 1] = {
  * set of points.
  * minmax(min, max, NUM_TRAINING_SAMPLES, irisDataset, NUM_FEATURES)
  */
-void minmax(DATA_TYPE *min, DATA_TYPE *max, int num_points,
-            DATA_TYPE known_points[][NUM_FEATURES + 1], int num_features) {
+void inline minmax(DATA_TYPE *__restrict min, DATA_TYPE *__restrict max,
+                   int num_points, DATA_TYPE known_points[][NUM_FEATURES + 1],
+                   int num_features) {
 
     for (int j = 0; j < num_features; j++) {
         min[j] = MAX_FP_VAL;
@@ -102,8 +103,10 @@ void minmax(DATA_TYPE *min, DATA_TYPE *max, int num_points,
  * Normalize the features of each point using minmax normalization.
  * minmax_normalize(min, max, NUM_TRAINING_SAMPLES, irisDataSet, NUM_FEATURES)
  */
-void minmax_normalize(DATA_TYPE *min, DATA_TYPE *max, int num_points,
-                      DATA_TYPE points[][NUM_FEATURES + 1], int num_features) {
+void inline minmax_normalize(DATA_TYPE *__restrict min,
+                             DATA_TYPE *__restrict max, int num_points,
+                             DATA_TYPE points[][NUM_FEATURES + 1],
+                             int num_features) {
 
     for (int i = 0; i < num_points; i++) {
         for (int j = 0; j < num_features; j++) {
@@ -126,8 +129,10 @@ void minmax_normalize(DATA_TYPE *min, DATA_TYPE *max, int num_points,
  * Normalize the features of each point using minmax normalization.
  * minmax_normalize_sample(min, max, inputSample, NUM_FEATURES)
  */
-void minmax_normalize_sample(DATA_TYPE *min, DATA_TYPE *max, DATA_TYPE *point,
-                             int num_features) {
+void inline minmax_normalize_sample(DATA_TYPE *__restrict min,
+                                    DATA_TYPE *__restrict max,
+                                    DATA_TYPE *__restrict point,
+                                    int num_features) {
     for (int j = 0; j < num_features; j++) {
         DATA_TYPE nfeature =
             (DATA_TYPE)((point[j] - min[j]) / (max[j] - min[j]));
