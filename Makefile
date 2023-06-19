@@ -13,6 +13,7 @@ UNAME_S := $(shell uname -s)
 SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name "*.cpp" -or -name "*.c" ! -name "test.c" -or -name "*.s")
 SRCS := $(filter-out tests/main.cpp, $(SRCS)) # removing the old main
 SRCS := $(filter-out tests/Tester.cpp, $(SRCS)) # removing the old main
+SRCS := $(filter-out tests/JsonExporter.cpp, $(SRCS)) # removing the old main
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
@@ -32,7 +33,7 @@ ifeq ($(UNAME_S),Linux)
 	PROF_FLAGS := $(PROF_FLAGS) -fprofile-arcs -ftest-coverage -fno-inline -fno-omit-frame-pointer
 	PROF_FLAGS := $(PROF_FLAGS) -fopt-info-vec
 endif
-C_XX_OPT_FLAGS := -O3 -march=native # -ftree-vectorize
+C_XX_OPT_FLAGS :=  # -O3 -march=native -ftree-vectorize
 EXTRA_FLAGS := -std=c++17 # only on Mac runing clang++
 SCENARIO := 1
 SCENARIO_FLAG := DSCENARIO=$(SCENARIO)
@@ -57,7 +58,7 @@ LDFLAGS :=
 ifeq ($(UNAME_S),Linux) 
 all: clean $(TARGET_NAME) run gprof graph
 else 
-all: clean $(TARGET_NAME) run
+all: clean $(TARGET_NAME) hyperfine
 endif
 
 $(TARGET_NAME): $(OBJS)
@@ -84,6 +85,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 .PHONY: graph
 .PHONY: clean-gprof
 .PHONY: advisor
+.PHONY: hyperfine
 
 clean:
 	$(RM) -r $(BUILD_DIR)
@@ -103,6 +105,9 @@ clean-gprof:
 advisor:
 	# TODO
 	@echo "To be defined"
+
+hyperfine:
+	hyperfine -N --warmup 5 --runs 100 './$(TARGET_NAME)'
 
 -include $(DEPS)
 

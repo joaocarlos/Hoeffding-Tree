@@ -274,7 +274,7 @@ int main() {
 #ifdef _ACCURACY_CHECK_
         if (i == ITERATIONS - 1) {
             float accuracy = wrong_classification /
-                             (float)(N_Training_Samples + N_Samples_Testing);
+                             (float)(N_Training_Samples + N_Testing_Samples);
             std::cout << "Accuracy: " << accuracy * 100 << "%" << std::endl;
         }
 #endif
